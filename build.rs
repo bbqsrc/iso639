@@ -55,8 +55,7 @@ fn main() {
     for (key, value) in names.iter() {
         map.entry(&**key, value);
     }
-        
-    writeln!(
-        &mut db, "{}", map.build()).unwrap();
+
+    writeln!(&mut db, "{}", map.build()).unwrap();
     write!(&mut db, ";\n").unwrap();
 }
