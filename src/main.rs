@@ -7,6 +7,8 @@ enum Args {
     Is(IsArgs),
     #[structopt(name = "has-1")]
     Has1(Has1Args),
+    Script(ScriptArgs),
+    Lcid(LcidArgs),
 }
 
 #[derive(Debug, StructOpt)]
@@ -41,17 +43,47 @@ struct Has1Args {
     tag: String,
 }
 
+#[derive(Debug, StructOpt)]
+struct ScriptArgs {
+    tag: String,
+}
+
+#[derive(Debug, StructOpt)]
+struct LcidArgs {
+    tag: String,
+    #[structopt(short, long)]
+    script: Option<String>,
+    #[structopt(short, long)]
+    region: Option<String>,
+}
+
 fn main() {
     match Args::from_args() {
+        Args::Lcid(x) => {
+            let script = x.script.as_ref().map(|x| &**x);
+            let region = x.region.as_ref().map(|x| &**x);
+            let r = match iso639::lcid::get(&*x.tag, script, region) {
+                Some(v) => v,
+                None => std::process::exit(1),
+            };
+            println!("{}", r.lcid);
+        }
+        Args::Script(x) => {
+            let r = match iso639::script::get(&*x.tag) {
+                Some(v) => v,
+                None => std::process::exit(1),
+            };
+            println!("{}", r.script);
+        }
         Args::Autonym(x) => {
-            let r = match iso639::get(&*x.tag) {
+            let r = match iso639::autonym::get(&*x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
             println!("{}", r.autonym.unwrap_or_else(|| r.name));
         }
         Args::Tag(x) => {
-            let r = match iso639::get(&*x.tag) {
+            let r = match iso639::autonym::get(&*x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
@@ -67,7 +99,7 @@ fn main() {
             }
         }
         Args::Is(x) => {
-            let r = match iso639::get(&*x.tag) {
+            let r = match iso639::autonym::get(&*x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
@@ -93,7 +125,7 @@ fn main() {
             }
         }
         Args::Has1(x) => {
-            let r = match iso639::get(&*x.tag) {
+            let r = match iso639::autonym::get(&*x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
