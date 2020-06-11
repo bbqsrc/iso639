@@ -85,7 +85,7 @@ fn build_script_db() {
             Some(&record[1])
         };
         let script = &record[2];
-        let source = &record[3];
+        let source = &record[4];
 
         writeln!(&mut db, "const {}: &'static Record = &Record {{", &rec_name).unwrap();
         names.insert(record[0].to_string(), rec_name.to_string());
