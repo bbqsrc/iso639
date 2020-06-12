@@ -154,8 +154,11 @@ fn build_lcid_db() {
             Some(&record[3])
         };
         let lcid = record[4].parse::<u32>().unwrap();
-        
-        let rec_name = format!("RECORD_{}", name_chunks.join("_").to_uppercase().replace("-", "_"));
+
+        let rec_name = format!(
+            "RECORD_{}",
+            name_chunks.join("_").to_uppercase().replace("-", "_")
+        );
 
         writeln!(&mut db, "const {}: &'static Record = &Record {{", &rec_name).unwrap();
         names.push(rec_name.to_string());
@@ -168,11 +171,7 @@ fn build_lcid_db() {
         writeln!(&mut db, "}};").unwrap();
     }
 
-    write!(
-        &mut db,
-        "static LCIDS: &'static [&'static Record] = &["
-    )
-    .unwrap();
+    write!(&mut db, "static LCIDS: &'static [&'static Record] = &[").unwrap();
 
     for name in names.iter() {
         writeln!(&mut db, "    {},", name).unwrap();
