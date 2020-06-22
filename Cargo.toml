@@ -5,7 +5,7 @@ authors = ["Brendan Molloy <brendan@bbqsrc.net>"]
 edition = "2018"
 
 [dependencies]
-structopt = "0.3.14"
+structopt = { version = "0.3.15", optional = true }
 phf = "0.8.0"
 
 [build-dependencies]

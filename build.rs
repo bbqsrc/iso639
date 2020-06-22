@@ -3,7 +3,7 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 
 fn build_autonym_db() {
-    let f = std::fs::File::open("../iso639-databases/iso639-autonyms.tsv").unwrap();
+    let f = std::fs::File::open("./iso639-databases/iso639-autonyms.tsv").unwrap();
     let path = Path::new(&std::env::var("OUT_DIR").unwrap()).join("autonym_db.rs");
     let mut db = BufWriter::new(File::create(&path).unwrap());
 
@@ -63,7 +63,7 @@ fn build_autonym_db() {
 }
 
 fn build_script_db() {
-    let f = std::fs::File::open("../iso639-databases/iso639-default-script.tsv").unwrap();
+    let f = std::fs::File::open("./iso639-databases/iso639-default-script.tsv").unwrap();
     let path = Path::new(&std::env::var("OUT_DIR").unwrap()).join("script_db.rs");
     let mut db = BufWriter::new(File::create(&path).unwrap());
 
@@ -118,7 +118,7 @@ fn build_script_db() {
 }
 
 fn build_lcid_db() {
-    let f = std::fs::File::open("../iso639-databases/iso639-lcids.tsv").unwrap();
+    let f = std::fs::File::open("./iso639-databases/iso639-lcids.tsv").unwrap();
     let path = Path::new(&std::env::var("OUT_DIR").unwrap()).join("lcid_db.rs");
     let mut db = BufWriter::new(File::create(&path).unwrap());
 
@@ -181,9 +181,14 @@ fn build_lcid_db() {
 }
 
 fn main() {
+    let mut process = std::process::Command::new("git")
+        .args(&["submodule", "update", "--init"])
+        .spawn()
+        .unwrap();
+    
+    process.wait().unwrap();
+
     build_autonym_db();
     build_lcid_db();
     build_script_db();
-
-    // build_index();
 }
