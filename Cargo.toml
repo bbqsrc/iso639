@@ -5,6 +5,7 @@ version = "0.1.0"
 authors = ["Brendan Molloy <brendan@bbqsrc.net>"]
 edition = "2018"
 repository = "https://github.com/bbqsrc/iso639"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 structopt = { version = "0.3.15", optional = true }
