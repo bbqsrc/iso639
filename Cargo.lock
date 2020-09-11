@@ -21,6 +21,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "based"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37133bf6cd50777365d7aec7263348cc98af90d0120ea7934e858d056e9b2246"
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -120,6 +126,7 @@ dependencies = [
 name = "iso639"
 version = "0.1.0"
 dependencies = [
+ "based",
  "csv",
  "phf",
  "phf_codegen",

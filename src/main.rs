@@ -15,6 +15,17 @@ enum Args {
     Script(ScriptArgs),
     /// Prints the LCID for a given tag, if available
     Lcid(LcidArgs),
+    // PseudoLcid(LcidArgs),
+    FromLcid(FromLcidArgs),
+}
+
+#[derive(Debug, StructOpt)]
+struct FromLcidArgs {
+    /// The ISO 639-1 or -3 tag
+    lcid: u32,
+
+    #[structopt(short = "p", long = "pseudo")]
+    allow_pseudo: bool,
 }
 
 #[derive(Debug, StructOpt)]
@@ -71,18 +82,63 @@ struct LcidArgs {
     #[structopt(short, long)]
     /// The ISO 3166-1 alpha-2 code or UN M.49 region code, if required
     region: Option<String>,
+
+    /// Generate a constant pseudo-LCID (that is technically non-compliant with [MS-LCID])
+    /// from a language, region (optional), and/or script (optional) to provide
+    /// interoperability with some broken piece of software.
+    #[structopt(short = "p", long = "pseudo")]
+    allow_pseudo: bool,
 }
 
 fn main() {
     match Args::from_args() {
+        Args::FromLcid(x) => {
+            match iso639::lcid::get_by_lcid(x.lcid) {
+                Some(v) => {
+                    println!("{:?}", v);
+                    return;
+                }
+                None => {}
+            };
+
+            if x.allow_pseudo {
+                match iso639::parse_pseudo_lcid(x.lcid) {
+                    Ok((tag, region)) => match region {
+                        Some(region) => println!("{}-{}", tag, region),
+                        None => println!("{}", tag),
+                    },
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                        std::process::exit(1)
+                    }
+                }
+            } else {
+                std::process::exit(1);
+            }
+        }
         Args::Lcid(x) => {
             let script = x.script.as_ref().map(|x| &**x);
             let region = x.region.as_ref().map(|x| &**x);
-            let r = match iso639::lcid::get(&*x.tag, script, region) {
-                Some(v) => v,
-                None => std::process::exit(1),
-            };
-            println!("{}", r.lcid);
+            match iso639::lcid::get(&*x.tag, script, region) {
+                Some(v) => {
+                    println!("{}", v.lcid);
+                }
+                None => {
+                    if x.allow_pseudo {
+                        let result =
+                            iso639::make_pseudo_lcid(&x.tag, x.region.as_ref().map(|x| &**x));
+                        match result {
+                            Ok(v) => println!("WARNING: Pseudo-LCID.\n{}", v),
+                            Err(e) => {
+                                eprintln!("{:?}", e);
+                                std::process::exit(1)
+                            }
+                        }
+                    } else {
+                        std::process::exit(1)
+                    }
+                }
+            }
         }
         Args::Script(x) => {
             let r = match iso639::script::get(&*x.tag) {

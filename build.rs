@@ -185,7 +185,7 @@ fn main() {
         .args(&["submodule", "update", "--init"])
         .spawn()
         .unwrap();
-    
+
     process.wait().unwrap();
 
     build_autonym_db();
