@@ -76,11 +76,13 @@ struct ScriptArgs {
 struct LcidArgs {
     /// The ISO 639-1 or -3 tag
     tag: String,
-    #[structopt(short, long)]
+
     /// The ISO-15924 script, if required
-    script: Option<String>,
     #[structopt(short, long)]
+    script: Option<String>,
+
     /// The ISO 3166-1 alpha-2 code or UN M.49 region code, if required
+    #[structopt(short, long)]
     region: Option<String>,
 
     /// Generate a constant pseudo-LCID (that is technically non-compliant with [MS-LCID])
@@ -88,6 +90,14 @@ struct LcidArgs {
     /// interoperability with some broken piece of software.
     #[structopt(short = "p", long = "pseudo")]
     allow_pseudo: bool,
+
+    /// Printed as a signed integer
+    #[structopt(short = "i", long = "signed")]
+    as_signed: bool,
+
+    /// Print with the hex representation
+    #[structopt(short = "x", long = "hex")]
+    as_hex: bool,
 }
 
 fn main() {
@@ -119,16 +129,19 @@ fn main() {
         Args::Lcid(x) => {
             let script = x.script.as_ref().map(|x| &**x);
             let region = x.region.as_ref().map(|x| &**x);
-            match iso639::lcid::get(&*x.tag, script, region) {
+            let lcid = match iso639::lcid::get(&*x.tag, script, region) {
                 Some(v) => {
-                    println!("{}", v.lcid);
+                    v.lcid
                 }
                 None => {
                     if x.allow_pseudo {
                         let result =
                             iso639::make_pseudo_lcid(&x.tag, x.region.as_ref().map(|x| &**x));
                         match result {
-                            Ok(v) => println!("WARNING: Pseudo-LCID.\n{}", v),
+                            Ok(v) => {
+                                println!("WARNING: Pseudo-LCID.");
+                                v
+                            }
                             Err(e) => {
                                 eprintln!("{:?}", e);
                                 std::process::exit(1)
@@ -138,6 +151,13 @@ fn main() {
                         std::process::exit(1)
                     }
                 }
+            };
+
+            match (x.as_signed, x.as_hex) {
+                (true, true) => println!("{:x}", lcid as i32),
+                (true, false) => println!("{}", lcid as i32),
+                (false, true) => println!("{:x}", lcid),
+                (false, false) => println!("{}", lcid),
             }
         }
         Args::Script(x) => {
