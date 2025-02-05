@@ -1,6 +1,6 @@
-use structopt::StructOpt;
+use clap::Parser;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum Args {
     /// Prints the autonym for a given language tag
     Autonym(AutonymArgs),
@@ -9,7 +9,7 @@ enum Args {
     /// Validates a provided tag as existing and valid
     Is(IsArgs),
     /// Checks if a provided tag in any format has a valid -1 variant
-    #[structopt(name = "has-1")]
+    #[clap(name = "has-1")]
     Has1(Has1Args),
     /// Prints the default script for a provided tag, if available
     Script(ScriptArgs),
@@ -19,89 +19,89 @@ enum Args {
     FromLcid(FromLcidArgs),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct FromLcidArgs {
     /// The ISO 639-1 or -3 tag
     lcid: u32,
 
-    #[structopt(short = "p", long = "pseudo")]
+    #[clap(short = 'p', long = "pseudo")]
     allow_pseudo: bool,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct AutonymArgs {
     /// The ISO 639-1 or -3 tag
     tag: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct TagArgs {
     /// Convert given tag into -1 format, if possible
-    #[structopt(short = "1")]
+    #[clap(short = '1')]
     to_tag1: bool,
 
     /// Convert given tag into -3 format
-    #[structopt(short = "3")]
+    #[clap(short = '3')]
     to_tag3: bool,
 
     /// The ISO 639-1 or -3 tag
     tag: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct IsArgs {
-    #[structopt(short = "1")]
+    #[clap(short = '1')]
     is_tag1: bool,
 
-    #[structopt(short = "3")]
+    #[clap(short = '3')]
     is_tag3: bool,
 
     /// The ISO 639-1 or -3 tag
     tag: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Has1Args {
     /// The ISO 639-1 or -3 tag
     tag: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct ScriptArgs {
     /// The ISO 639-1 or -3 tag
     tag: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct LcidArgs {
     /// The ISO 639-1 or -3 tag
     tag: String,
 
     /// The ISO-15924 script, if required
-    #[structopt(short, long)]
+    #[clap(short, long)]
     script: Option<String>,
 
     /// The ISO 3166-1 alpha-2 code or UN M.49 region code, if required
-    #[structopt(short, long)]
+    #[clap(short, long)]
     region: Option<String>,
 
     /// Generate a constant pseudo-LCID (that is technically non-compliant with [MS-LCID])
     /// from a language, region (optional), and/or script (optional) to provide
     /// interoperability with some broken piece of software.
-    #[structopt(short = "p", long = "pseudo")]
+    #[clap(short = 'p', long = "pseudo")]
     allow_pseudo: bool,
 
     /// Printed as a signed integer
-    #[structopt(short = "i", long = "signed")]
+    #[clap(short = 'i', long = "signed")]
     as_signed: bool,
 
     /// Print with the hex representation
-    #[structopt(short = "x", long = "hex")]
+    #[clap(short = 'x', long = "hex")]
     as_hex: bool,
 }
 
 fn main() {
-    match Args::from_args() {
+    match Args::parse() {
         Args::FromLcid(x) => {
             match iso639::lcid::get_by_lcid(x.lcid) {
                 Some(v) => {
