@@ -21,7 +21,7 @@ enum Args {
 
 #[derive(Debug, Parser)]
 struct FromLcidArgs {
-    /// The ISO 639-1 or -3 tag
+    /// The LCID
     lcid: u32,
 
     #[clap(short = 'p', long = "pseudo")]
@@ -103,13 +103,10 @@ struct LcidArgs {
 fn main() {
     match Args::parse() {
         Args::FromLcid(x) => {
-            match iso639::lcid::get_by_lcid(x.lcid) {
-                Some(v) => {
-                    println!("{:?}", v);
-                    return;
-                }
-                None => {}
-            };
+            if let Some(v) = iso639::lcid::get_by_lcid(x.lcid) {
+                println!("{:?}", v);
+                return;
+            }
 
             if x.allow_pseudo {
                 match iso639::parse_pseudo_lcid(x.lcid) {
@@ -127,19 +124,16 @@ fn main() {
             }
         }
         Args::Lcid(x) => {
-            let script = x.script.as_ref().map(|x| &**x);
-            let region = x.region.as_ref().map(|x| &**x);
-            let lcid = match iso639::lcid::get(&*x.tag, script, region) {
-                Some(v) => {
-                    v.lcid
-                }
+            let script = x.script.as_deref();
+            let region = x.region.as_deref();
+            let lcid = match iso639::lcid::get(&x.tag, script, region) {
+                Some(v) => v.lcid,
                 None => {
                     if x.allow_pseudo {
-                        let result =
-                            iso639::make_pseudo_lcid(&x.tag, x.region.as_ref().map(|x| &**x));
+                        let result = iso639::make_pseudo_lcid(&x.tag, x.region.as_deref());
                         match result {
                             Ok(v) => {
-                                println!("WARNING: Pseudo-LCID.");
+                                eprintln!("WARNING: Pseudo-LCID.");
                                 v
                             }
                             Err(e) => {
@@ -161,21 +155,21 @@ fn main() {
             }
         }
         Args::Script(x) => {
-            let r = match iso639::script::get(&*x.tag) {
+            let r = match iso639::script::get(&x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
             println!("{}", r.script);
         }
         Args::Autonym(x) => {
-            let r = match iso639::autonym::get(&*x.tag) {
+            let r = match iso639::autonym::get(&x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
             println!("{}", r.display_name());
         }
         Args::Tag(x) => {
-            let r = match iso639::autonym::get(&*x.tag) {
+            let r = match iso639::autonym::get(&x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
@@ -191,33 +185,21 @@ fn main() {
             }
         }
         Args::Is(x) => {
-            let r = match iso639::autonym::get(&*x.tag) {
+            let r = match iso639::autonym::get(&x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
 
             if x.is_tag1 {
-                if let Some(v) = r.tag1 {
-                    if v == x.tag {
-                        // Success!
-                        return;
-                    } else {
-                        std::process::exit(1)
-                    }
-                } else {
+                if r.tag1 != Some(x.tag.as_str()) {
                     std::process::exit(1)
                 }
-            } else if x.is_tag3 {
-                if r.tag3 == x.tag {
-                    // Success!
-                    return;
-                } else {
-                    std::process::exit(1)
-                }
+            } else if x.is_tag3 && r.tag3 != x.tag {
+                std::process::exit(1)
             }
         }
         Args::Has1(x) => {
-            let r = match iso639::autonym::get(&*x.tag) {
+            let r = match iso639::autonym::get(&x.tag) {
                 Some(v) => v,
                 None => std::process::exit(1),
             };

@@ -245,7 +245,7 @@ pub fn make_pseudo_lcid(tag: &str, region: Option<&str>) -> Result<u32, Error> {
     };
 
     // 1XRRRRRR_RRRR0000_TLLLLLLL_LLLLLLLL
-    let mut x = tag_nr as u16;
+    let mut x = tag_nr;
     if is_m49 {
         x |= 0b1000_0000_0000_0000
     }
@@ -255,5 +255,5 @@ pub fn make_pseudo_lcid(tag: &str, region: Option<&str>) -> Result<u32, Error> {
     let mut out = (y as u32) << 16;
     out |= x as u32;
 
-    Ok(out as u32)
+    Ok(out)
 }
