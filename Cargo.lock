@@ -142,10 +142,17 @@ name = "iso639"
 version = "0.2.0"
 dependencies = [
  "based",
- "clap",
  "csv",
  "phf",
  "phf_codegen",
+]
+
+[[package]]
+name = "iso639-cli"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "iso639",
 ]
 
 [[package]]

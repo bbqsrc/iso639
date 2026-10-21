@@ -1,0 +1,16 @@
+[package]
+name = "iso639-cli"
+description = "Command line tool for manipulating ISO639-1 and -3 tags, autonyms and data"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "iso639"
+path = "src/main.rs"
+
+[dependencies]
+iso639 = { path = "..", version = "0.2.0" }
+clap = { version = "4.5.28", features = ["derive"] }
