@@ -1,21 +1,108 @@
+//! Autonyms, default scripts and Windows LCIDs for languages, from
+//! [iso639-databases](https://github.com/divvun/iso639-databases).
+//!
+//! Lookups take BCP 47 language tags such as `se`, `sme`, `sr-Latn` or `rmn-SE`.
+
+/// The language, script and region of a BCP 47 language tag, in the case the databases use.
+struct Subtags {
+    tag3: &'static str,
+    script: Option<String>,
+    region: Option<String>,
+}
+
+fn is_alpha(s: &str, len: usize) -> bool {
+    s.len() == len && s.bytes().all(|b| b.is_ascii_alphabetic())
+}
+
+fn normalise_script(script: &str) -> String {
+    let mut script = script.to_ascii_lowercase();
+    script[..1].make_ascii_uppercase();
+    script
+}
+
+/// Parses the language, script and region of a BCP 47 language tag. An extended
+/// language subtag replaces the language, so `zh-yue` is `yue`. Variants,
+/// extensions and private use subtags are ignored.
+fn parse(tag: &str) -> Option<Subtags> {
+    let mut parts = tag.split(['-', '_']).peekable();
+    let mut language = parts.next()?;
+    if !is_alpha(language, 2) && !is_alpha(language, 3) {
+        return None;
+    }
+    if let Some(extlang) = parts.next_if(|p| is_alpha(p, 3)) {
+        language = extlang;
+    }
+    let script = parts.next_if(|p| is_alpha(p, 4)).map(normalise_script);
+    let region = parts
+        .next_if(|p| is_alpha(p, 2) || (p.len() == 3 && p.bytes().all(|b| b.is_ascii_digit())))
+        .map(str::to_ascii_uppercase);
+    let tag3 = autonym::LANGUAGES
+        .get(&*language.to_ascii_lowercase())
+        .copied()?;
+    Some(Subtags {
+        tag3,
+        script,
+        region,
+    })
+}
+
+/// The database key for a language, script and region, e.g. `srp-Latn` or `rmn-SE`.
+fn key(tag3: &str, script: Option<&str>, region: Option<&str>) -> String {
+    [Some(tag3), script, region]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
 pub mod autonym {
+    /// A row of the autonym table.
     #[derive(Debug, Clone, Copy)]
     pub struct Record {
         pub tag3: &'static str,
         pub tag1: Option<&'static str>,
-        pub name: &'static str,
+        /// The ISO 15924 script, if the row is not in the language's default script.
+        pub script: Option<&'static str>,
+        /// The ISO 3166-1 or UN M.49 region, if the row only applies to that region.
+        pub region: Option<&'static str>,
+        /// What the speakers call their language in English.
+        pub common_name: &'static str,
+        /// What the speakers call their language in that language, if it differs
+        /// from the common name.
         pub autonym: Option<&'static str>,
         pub source: &'static str,
     }
 
+    impl Record {
+        /// The autonym, or the common name if there is no separate autonym.
+        pub fn display_name(&self) -> &'static str {
+            self.autonym.unwrap_or(self.common_name)
+        }
+    }
+
     include!(concat!(env!("OUT_DIR"), "/autonym_db.rs"));
 
+    /// Looks up a BCP 47 language tag. Without a row for the exact tag, this
+    /// falls back by dropping the region, then the script. The language's default
+    /// script counts as no script, so `sr-Cyrl` finds the `sr` row.
     pub fn get(tag: &str) -> Option<&'static Record> {
-        AUTONYMS.get(tag).map(|x| *x)
+        let crate::Subtags {
+            tag3,
+            script,
+            region,
+        } = crate::parse(tag)?;
+        let default_script = crate::script::by_tag3(tag3).map(|r| r.script);
+        let script = script.as_deref().filter(|s| Some(*s) != default_script);
+        let region = region.as_deref();
+
+        [(script, region), (script, None), (None, None)]
+            .into_iter()
+            .find_map(|(s, r)| AUTONYMS.get(&*crate::key(tag3, s, r)).copied())
     }
 }
 
 pub mod script {
+    /// A row of the default script table.
     #[derive(Debug, Clone, Copy)]
     pub struct Record {
         pub tag3: &'static str,
@@ -26,12 +113,18 @@ pub mod script {
 
     include!(concat!(env!("OUT_DIR"), "/script_db.rs"));
 
+    pub(crate) fn by_tag3(tag3: &str) -> Option<&'static Record> {
+        SCRIPTS.get(tag3).copied()
+    }
+
+    /// Looks up the default script of the language of a BCP 47 language tag.
     pub fn get(tag: &str) -> Option<&'static Record> {
-        SCRIPTS.get(tag).map(|x| *x)
+        by_tag3(crate::parse(tag)?.tag3)
     }
 }
 
 pub mod lcid {
+    /// A row of the LCID table.
     #[derive(Debug, Clone, Copy)]
     pub struct Record {
         pub tag3: &'static str,
@@ -43,27 +136,23 @@ pub mod lcid {
 
     include!(concat!(env!("OUT_DIR"), "/lcid_db.rs"));
 
+    /// Looks up the LCID of a BCP 47 language tag. A `script` or `region` given
+    /// here replaces the one in the tag.
     pub fn get(tag: &str, script: Option<&str>, region: Option<&str>) -> Option<&'static Record> {
-        let tag = match super::autonym::get(tag) {
-            Some(v) => v.tag3,
-            None => return None,
-        };
+        let subtags = crate::parse(tag)?;
+        let script = script.map(crate::normalise_script).or(subtags.script);
+        let region = region.map(str::to_ascii_uppercase).or(subtags.region);
 
         LCIDS
-            .binary_search_by_key(&(tag, script, region), |record| {
-                (record.tag3, record.script, record.region)
+            .binary_search_by_key(&(subtags.tag3, script.as_deref(), region.as_deref()), |r| {
+                (r.tag3, r.script, r.region)
             })
-            .map(|i| LCIDS[i])
             .ok()
+            .map(|i| &LCIDS[i])
     }
 
     pub fn get_by_lcid(lcid: u32) -> Option<&'static Record> {
-        for record in LCIDS {
-            if record.lcid == lcid {
-                return Some(record);
-            }
-        }
-        None
+        LCIDS.iter().find(|r| r.lcid == lcid)
     }
 }
 
@@ -134,10 +223,7 @@ pub fn parse_pseudo_lcid(lcid: u32) -> Result<(String, Option<String>), LcidErro
 /// from a language, region (optional), and/or script (optional) to provide
 /// interoperability with some broken piece of software.
 pub fn make_pseudo_lcid(tag: &str, region: Option<&str>) -> Result<u32, Error> {
-    let tag = match autonym::get(tag) {
-        Some(v) => v.tag3,
-        None => return Err(Error::InvalidTag),
-    };
+    let tag = parse(tag).ok_or(Error::InvalidTag)?.tag3;
     let region = region.map(|x| x.to_lowercase());
 
     let tag_nr: u16 = base26_decode(tag).ok_or(Error::InvalidTag)?;

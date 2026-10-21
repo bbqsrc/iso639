@@ -1,3 +1,4 @@
 [submodule "iso639-databases"]
 	path = iso639-databases
-	url = https://github.com/bbqsrc/iso639-databases
+	url = https://github.com/divvun/iso639-databases
+	branch = main

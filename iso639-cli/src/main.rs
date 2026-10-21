@@ -30,7 +30,7 @@ struct FromLcidArgs {
 
 #[derive(Debug, Parser)]
 struct AutonymArgs {
-    /// The ISO 639-1 or -3 tag
+    /// The BCP 47 language tag, such as se, sr-Latn or rmn-SE
     tag: String,
 }
 
@@ -68,13 +68,13 @@ struct Has1Args {
 
 #[derive(Debug, Parser)]
 struct ScriptArgs {
-    /// The ISO 639-1 or -3 tag
+    /// The BCP 47 language tag
     tag: String,
 }
 
 #[derive(Debug, Parser)]
 struct LcidArgs {
-    /// The ISO 639-1 or -3 tag
+    /// The BCP 47 language tag
     tag: String,
 
     /// The ISO-15924 script, if required
@@ -172,7 +172,7 @@ fn main() {
                 Some(v) => v,
                 None => std::process::exit(1),
             };
-            println!("{}", r.autonym.unwrap_or_else(|| r.name));
+            println!("{}", r.display_name());
         }
         Args::Tag(x) => {
             let r = match iso639::autonym::get(&*x.tag) {

@@ -3,7 +3,7 @@ members = ["iso639-cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Brendan Molloy <brendan@bbqsrc.net>"]
 edition = "2024"
 rust-version = "1.85"
@@ -12,7 +12,7 @@ license = "MIT OR Apache-2.0"
 
 [package]
 name = "iso639"
-description = "Library for manipulating ISO639-1 and -3 tags, autonyms and data"
+description = "Autonyms, default scripts and LCIDs for BCP 47 language tags"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

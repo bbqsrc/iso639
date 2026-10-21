@@ -1,194 +1,189 @@
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-fn build_autonym_db() {
-    let f = std::fs::File::open("./iso639-databases/iso639-autonyms.tsv").unwrap();
-    let path = Path::new(&std::env::var("OUT_DIR").unwrap()).join("autonym_db.rs");
-    let mut db = BufWriter::new(File::create(&path).unwrap());
+const DATABASES: &str = "iso639-databases";
 
-    let mut names = std::collections::BTreeMap::new();
+/// A TSV table whose fields are looked up by their header name.
+struct Table {
+    headers: csv::StringRecord,
+    records: Vec<csv::StringRecord>,
+}
 
-    let mut tsv_reader = csv::ReaderBuilder::new()
-        .delimiter(b'\t')
-        .has_headers(true)
-        .from_reader(f);
-
-    for result in tsv_reader.records() {
-        let record = result.unwrap();
-
-        let rec_name = format!("RECORD_{}", record[0].to_uppercase());
-        let tag3 = &record[0];
-        let tag1 = if record[1].trim() == "" {
-            None
-        } else {
-            Some(&record[1])
-        };
-        let name = &record[2];
-        let autonym = if record[3].trim() == "" {
-            None
-        } else {
-            Some(&record[3])
-        };
-        let source = &record[4];
-
-        writeln!(&mut db, "const {}: &'static Record = &Record {{", &rec_name).unwrap();
-        names.insert(record[0].to_string(), rec_name.to_string());
-        if record[1].trim() != "" {
-            names.insert(record[1].to_string(), rec_name.to_string());
-        }
-        writeln!(
-            &mut db,
-            "    tag3: {:?}, tag1: {:?}, name: {:?}, autonym: {:?}, source: {:?}",
-            tag3, tag1, name, autonym, source
-        )
-        .unwrap();
-        writeln!(&mut db, "}};").unwrap();
+impl Table {
+    fn open(name: &str) -> Self {
+        let path = Path::new(DATABASES).join(name);
+        println!("cargo::rerun-if-changed={}", path.display());
+        let file = File::open(&path).unwrap_or_else(|e| {
+            panic!(
+                "could not open {}: {e}. Run `git submodule update --init` to fetch the databases.",
+                path.display()
+            )
+        });
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(b'\t')
+            .quoting(false)
+            .from_reader(file);
+        let headers = reader.headers().unwrap().clone();
+        let records = reader.records().map(Result::unwrap).collect();
+        Table { headers, records }
     }
 
-    write!(
-        &mut db,
-        "static AUTONYMS: phf::Map<&'static str, &'static Record> = "
+    fn rows(&self) -> impl Iterator<Item = Row<'_>> {
+        self.records.iter().map(|record| Row {
+            table: self,
+            record,
+        })
+    }
+}
+
+struct Row<'a> {
+    table: &'a Table,
+    record: &'a csv::StringRecord,
+}
+
+impl<'a> Row<'a> {
+    fn get(&self, column: &str) -> &'a str {
+        let index = self
+            .table
+            .headers
+            .iter()
+            .position(|h| h == column)
+            .unwrap_or_else(|| panic!("missing column {column}"));
+        &self.record[index]
+    }
+
+    fn opt(&self, column: &str) -> Option<&'a str> {
+        Some(self.get(column)).filter(|v| !v.is_empty())
+    }
+}
+
+/// The lookup key for a language, script and region, e.g. `srp-Latn` or `rmn-SE`.
+fn key(tag3: &str, script: Option<&str>, region: Option<&str>) -> String {
+    [Some(tag3), script, region]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+fn out_file(name: &str) -> BufWriter<File> {
+    let path = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join(name);
+    BufWriter::new(File::create(path).unwrap())
+}
+
+fn build_autonym_db() {
+    let table = Table::open("bcp47-autonyms.tsv");
+    let mut autonyms = BTreeMap::new();
+    let mut languages = BTreeMap::new();
+
+    for row in table.rows() {
+        let tag3 = row.get("tag3");
+        let tag1 = row.opt("tag1");
+        let script = row.opt("script");
+        let region = row.opt("region");
+
+        if script.is_none() && region.is_none() {
+            languages.insert(tag3.to_string(), format!("{tag3:?}"));
+            if let Some(tag1) = tag1 {
+                languages.insert(tag1.to_string(), format!("{tag3:?}"));
+            }
+        }
+
+        let record = format!(
+            "&Record {{ tag3: {tag3:?}, tag1: {tag1:?}, script: {script:?}, region: {region:?}, \
+             common_name: {:?}, autonym: {:?}, source: {:?} }}",
+            row.get("common_name"),
+            row.opt("autonym"),
+            row.get("source"),
+        );
+        autonyms.insert(key(tag3, script, region), record);
+    }
+
+    let mut db = out_file("autonym_db.rs");
+    let mut map = phf_codegen::Map::new();
+    for (k, v) in &autonyms {
+        map.entry(k.as_str(), v.as_str());
+    }
+    writeln!(
+        db,
+        "static AUTONYMS: phf::Map<&str, &Record> = {};",
+        map.build()
     )
     .unwrap();
 
     let mut map = phf_codegen::Map::new();
-
-    for (key, value) in names.iter() {
-        map.entry(&**key, value);
+    for (k, v) in &languages {
+        map.entry(k.as_str(), v.as_str());
     }
-
-    writeln!(&mut db, "{}", map.build()).unwrap();
-    write!(&mut db, ";\n").unwrap();
+    writeln!(
+        db,
+        "pub(crate) static LANGUAGES: phf::Map<&str, &str> = {};",
+        map.build()
+    )
+    .unwrap();
 }
 
 fn build_script_db() {
-    let f = std::fs::File::open("./iso639-databases/iso639-default-script.tsv").unwrap();
-    let path = Path::new(&std::env::var("OUT_DIR").unwrap()).join("script_db.rs");
-    let mut db = BufWriter::new(File::create(&path).unwrap());
+    let table = Table::open("iso639-default-script.tsv");
+    let mut scripts = BTreeMap::new();
 
-    let mut names = std::collections::BTreeMap::new();
-
-    let mut tsv_reader = csv::ReaderBuilder::new()
-        .delimiter(b'\t')
-        .has_headers(true)
-        .from_reader(f);
-
-    for result in tsv_reader.records() {
-        let record = result.unwrap();
-
-        let rec_name = format!("RECORD_{}", record[0].to_uppercase());
-        let tag3 = &record[0];
-        let tag1 = if record[1].trim() == "" {
-            None
-        } else {
-            Some(&record[1])
-        };
-        let script = &record[2];
-        let source = &record[4];
-
-        writeln!(&mut db, "const {}: &'static Record = &Record {{", &rec_name).unwrap();
-        names.insert(record[0].to_string(), rec_name.to_string());
-        if record[1].trim() != "" {
-            names.insert(record[1].to_string(), rec_name.to_string());
-        }
-        writeln!(
-            &mut db,
-            "    tag3: {:?}, tag1: {:?}, script: {:?}, source: {:?}",
-            tag3, tag1, script, source
-        )
-        .unwrap();
-        writeln!(&mut db, "}};").unwrap();
+    for row in table.rows() {
+        let tag3 = row.get("tag3");
+        let record = format!(
+            "&Record {{ tag3: {tag3:?}, tag1: {:?}, script: {:?}, source: {:?} }}",
+            row.opt("tag1"),
+            row.get("script"),
+            row.get("source"),
+        );
+        scripts.insert(tag3.to_string(), record);
     }
 
-    write!(
-        &mut db,
-        "static SCRIPTS: phf::Map<&'static str, &'static Record> = "
+    let mut db = out_file("script_db.rs");
+    let mut map = phf_codegen::Map::new();
+    for (k, v) in &scripts {
+        map.entry(k.as_str(), v.as_str());
+    }
+    writeln!(
+        db,
+        "static SCRIPTS: phf::Map<&str, &Record> = {};",
+        map.build()
     )
     .unwrap();
-
-    let mut map = phf_codegen::Map::new();
-
-    for (key, value) in names.iter() {
-        map.entry(&**key, value);
-    }
-
-    writeln!(&mut db, "{}", map.build()).unwrap();
-    write!(&mut db, ";\n").unwrap();
 }
 
 fn build_lcid_db() {
-    let f = std::fs::File::open("./iso639-databases/iso639-lcids.tsv").unwrap();
-    let path = Path::new(&std::env::var("OUT_DIR").unwrap()).join("lcid_db.rs");
-    let mut db = BufWriter::new(File::create(&path).unwrap());
+    let table = Table::open("iso639-lcids.tsv");
+    let mut records: Vec<_> = table
+        .rows()
+        .map(|row| {
+            let lcid: u32 = row.get("lcid").parse().unwrap();
+            (
+                row.get("tag3"),
+                row.opt("script"),
+                row.opt("region"),
+                row.opt("tag1"),
+                lcid,
+            )
+        })
+        .collect();
+    records.sort();
 
-    let mut names = vec![];
-
-    let mut tsv_reader = csv::ReaderBuilder::new()
-        .delimiter(b'\t')
-        .has_headers(true)
-        .from_reader(f);
-
-    for result in tsv_reader.records() {
-        let record = result.unwrap();
-        println!("{:?}", record);
-
-        let mut name_chunks = vec![&record[0]];
-
-        let tag3 = &record[0];
-        let tag1 = if record[1].trim() == "" {
-            None
-        } else {
-            Some(&record[1])
-        };
-        let script = if record[2].trim() == "" {
-            None
-        } else {
-            name_chunks.push(&record[2]);
-            Some(&record[2])
-        };
-        let region = if record[3].trim() == "" {
-            None
-        } else {
-            name_chunks.push(&record[3]);
-            Some(&record[3])
-        };
-        let lcid = record[4].parse::<u32>().unwrap();
-
-        let rec_name = format!(
-            "RECORD_{}",
-            name_chunks.join("_").to_uppercase().replace("-", "_")
-        );
-
-        writeln!(&mut db, "const {}: &'static Record = &Record {{", &rec_name).unwrap();
-        names.push(rec_name.to_string());
+    let mut db = out_file("lcid_db.rs");
+    writeln!(db, "static LCIDS: &[Record] = &[").unwrap();
+    for (tag3, script, region, tag1, lcid) in records {
         writeln!(
-            &mut db,
-            "    tag3: {:?}, tag1: {:?}, script: {:?}, region: {:?}, lcid: {}",
-            tag3, tag1, script, region, lcid,
+            db,
+            "    Record {{ tag3: {tag3:?}, tag1: {tag1:?}, script: {script:?}, region: {region:?}, lcid: {lcid} }},"
         )
         .unwrap();
-        writeln!(&mut db, "}};").unwrap();
     }
-
-    write!(&mut db, "static LCIDS: &'static [&'static Record] = &[").unwrap();
-
-    for name in names.iter() {
-        writeln!(&mut db, "    {},", name).unwrap();
-    }
-
-    write!(&mut db, "];\n").unwrap();
+    writeln!(db, "];").unwrap();
 }
 
 fn main() {
-    let mut process = std::process::Command::new("git")
-        .args(&["submodule", "update", "--init"])
-        .spawn()
-        .unwrap();
-
-    process.wait().unwrap();
-
     build_autonym_db();
-    build_lcid_db();
     build_script_db();
+    build_lcid_db();
 }
