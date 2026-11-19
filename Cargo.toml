@@ -3,7 +3,7 @@ members = ["iso639-cli", "iso639-wasm"]
 resolver = "3"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Brendan Molloy <brendan@bbqsrc.net>"]
 edition = "2024"
 rust-version = "1.85"
@@ -19,6 +19,16 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 rust-version.workspace = true
+# The library and the tables it is built from; js/ and iso639-wasm/ are the
+# npm package's.
+include = [
+    "/src",
+    "/build.rs",
+    "/tests",
+    "/LICENSE-*",
+    "/iso639-databases/*.tsv",
+    "/iso639-databases/LICENSE",
+]
 
 [build-dependencies]
 csv = "1.4.0"
