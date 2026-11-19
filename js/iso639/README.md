@@ -18,10 +18,10 @@ import { getAutonym, getLcid, getScript, init } from "@divvun/iso639";
 
 await init();
 
-getAutonym("se").displayName; // "Davvisámegiella"
-getAutonym("sr-Latn").displayName; // "Srpski"
-getScript("sr").script; // "Cyrl"
-getLcid("se-NO").lcid; // 1083
+getAutonym("se")?.displayName; // "Davvisámegiella"
+getAutonym("sr-Latn")?.displayName; // "Srpski"
+getScript("sr")?.script; // "Cyrl"
+getLcid("se-NO")?.lcid; // 1083
 ```
 
 Call `init()` once and wait for it before anything else. A call that comes
@@ -31,7 +31,8 @@ Lookups take tags such as `se`, `sme`, `sr-Latn` or `rmn-SE`, in any case,
 with `-` or `_` between subtags. An ISO 639-1 and an ISO 639-3 code find the
 same language. An extended language subtag stands for the language, so
 `zh-yue` is `yue`. Variants, extensions and private use subtags are ignored.
-A tag the databases have nothing for gives `null`.
+A tag the databases have nothing for gives `null`, which the `?.` above
+allows for.
 
 ### Autonyms
 
@@ -74,7 +75,7 @@ is exact, with no fallback. A `script` or `region` in `options` replaces the
 one in `tag`:
 
 ```js
-getLcid("sr", { script: "Latn", region: "RS" }).lcid; // 9242, as getLcid("sr-Latn-RS")
+getLcid("sr", { script: "Latn", region: "RS" })?.lcid; // 9242, as getLcid("sr-Latn-RS")
 ```
 
 `getByLcid(lcid)` returns the row for an LCID.
@@ -123,7 +124,7 @@ again.
 import { getAutonym, init } from "npm:@divvun/iso639";
 
 await init();
-console.log(getAutonym("smn").displayName); // "Anarâškielâ"
+console.log(getAutonym("smn")?.displayName); // "Anarâškielâ"
 ```
 
 ```sh
