@@ -73,3 +73,10 @@ fn lcids() {
         Some(("sme", None))
     );
 }
+
+#[test]
+fn lcid_script_argument_that_is_not_a_script() {
+    assert!(lcid::get("sr", Some(""), None).is_none());
+    assert!(lcid::get("sr", Some("é"), Some("RS")).is_none());
+    assert_eq!(lcid::get("sr", Some("latn"), Some("rs")).map(|r| r.lcid), Some(9242));
+}

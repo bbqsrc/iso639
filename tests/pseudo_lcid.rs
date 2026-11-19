@@ -1,4 +1,4 @@
-use iso639::{make_pseudo_lcid, parse_pseudo_lcid};
+use iso639::{Error, make_pseudo_lcid, parse_pseudo_lcid};
 
 // Pseudo-LCIDs are meant to be constant, so these values must never change.
 const KNOWN: &[(&str, Option<&str>, u32)] = &[
@@ -32,4 +32,15 @@ fn parse_round_trips() {
 #[test]
 fn real_lcids_are_not_pseudo() {
     assert!(parse_pseudo_lcid(1083).is_err());
+}
+
+#[test]
+fn regions_that_are_not_regions() {
+    for region in ["²1", "1²", "", "N", "NOR", "1234", "١٢"] {
+        assert!(
+            matches!(make_pseudo_lcid("sme", Some(region)), Err(Error::InvalidRegion)),
+            "{region:?}"
+        );
+    }
+    assert!(matches!(make_pseudo_lcid("zz", None), Err(Error::InvalidTag)));
 }

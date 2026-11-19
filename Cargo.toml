@@ -20,11 +20,7 @@ repository.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
-[dependencies]
-phf = "0.14.0"
-
 [build-dependencies]
-phf_codegen = "0.14.0"
 csv = "1.4.0"
 
 [profile.release]
