@@ -1,0 +1,30 @@
+{
+  "name": "@divvun/iso639",
+  "version": "0.1.0",
+  "description": "Autonyms, default scripts and Windows LCIDs for BCP 47 language tags, from divvun/iso639-databases, as WebAssembly for browsers, Web Workers, Deno, Node and Bun.",
+  "keywords": ["iso639", "bcp47", "language-tags", "autonym", "lcid", "iso15924", "divvun", "webassembly"],
+  "license": "MIT OR Apache-2.0",
+  "author": "Brendan Molloy <brendan@bbqsrc.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bbqsrc/iso639.git",
+    "directory": "js/iso639"
+  },
+  "homepage": "https://github.com/bbqsrc/iso639/tree/main/js/iso639#readme",
+  "bugs": "https://github.com/bbqsrc/iso639/issues",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

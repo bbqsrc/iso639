@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "lib": ["esnext", "dom"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true
+  },
+  "exclude": ["**/dist/", "**/pkg/", "**/node_modules/", "**/*.mjs"]
+}

@@ -1,0 +1,23 @@
+[package]
+name = "iso639-wasm"
+# The version of @divvun/iso639, which is versioned on its own; the library it
+# binds keeps the workspace version. js/build.mjs refuses a build whose
+# js/iso639/package.json says otherwise.
+version = "0.1.0"
+description = "wasm-bindgen glue behind @divvun/iso639"
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+rust-version.workspace = true
+# The glue reaches users only through the npm package under js/iso639.
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+iso639 = { path = ".." }
+# Pinned: the wasm-bindgen CLI that generates the JavaScript glue must be this
+# exact version, or the module it writes does not match the one built here.
+wasm-bindgen = "=0.2.118"

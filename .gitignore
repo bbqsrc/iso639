@@ -1,1 +1,6 @@
 /target
+
+# What js/build.mjs builds.
+/js/iso639/pkg/
+/js/iso639/dist/
+/js/**/node_modules/

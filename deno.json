@@ -1,0 +1,8 @@
+{
+  "workspace": ["./js"],
+  "exclude": ["target/"],
+  "lock": false,
+  "imports": {
+    "./js/iso639/pkg/iso639_wasm.js": "./js/iso639/glue-stub.d.ts"
+  }
+}

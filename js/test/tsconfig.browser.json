@@ -1,0 +1,8 @@
+{
+  "extends": "../iso639/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "declaration": false
+  },
+  "files": ["browser.ts"]
+}
